@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo"
+	"github.com/leshachaplin/Dispatcher/Websocket"
 	"github.com/leshachaplin/Dispatcher/internal/dispatcher"
 	"github.com/leshachaplin/Dispatcher/internal/initialization"
 	"github.com/segmentio/kafka-go"
@@ -59,37 +60,40 @@ var rootCmd = &cobra.Command{
 		d := &dispatcher.Dispatcher{
 			Operation: make(chan dispatcher.Operation),
 		}
+		//
+		//e := echo.New()
+		//
+		//e.GET("/role", func(c echo.Context) error {
+		//	websocket.Handler(func(ws *websocket.Conn) {
+		//		fmt.Println("handle server connection")
+		//		defer ws.Close()
+		//		//fmt.Println(fmt.Sprintf("i'am RoleWorker port%d", port))
+		//		for {
+		//
+		//			fmt.Println("Try to read from websocket")
+		//			msg := ""
+		//			err := websocket.Message.Receive(ws, &msg)
+		//			fmt.Println(fmt.Sprintf("Read from websoket %s", msg))
+		//			if err != nil {
+		//				fmt.Println(fmt.Sprintf("Error %s", err))
+		//			}
+		//
+		//			//fmt.Println(fmt.Sprintf("i'am port %d read message %s", port, msg))
+		//			d.Operation <- &ReadRole{Role: msg}
+		//			//if port == message {
+		//			fmt.Println(fmt.Sprintf("message %s", msg))
+		//		}
+		//		//}
+		//	}).ServeHTTP(c.Response(), c.Request())
+		//
+		//	return nil
+		//})
 
-		e := echo.New()
+		w := Websocket.New(OB(*d), done, serverPort)
 
-		e.GET("/role", func(c echo.Context) error {
-			websocket.Handler(func(ws *websocket.Conn) {
-				fmt.Println("handle server connection")
-				defer ws.Close()
-				//fmt.Println(fmt.Sprintf("i'am RoleWorker port%d", port))
-				for {
-
-					fmt.Println("Try to read from websocket")
-					msg := ""
-					err := websocket.Message.Receive(ws, &msg)
-					fmt.Println(fmt.Sprintf("Read from websoket %s", msg))
-					if err != nil {
-						fmt.Println(fmt.Sprintf("Error %s", err))
-					}
-
-					//fmt.Println(fmt.Sprintf("i'am port %d read message %s", port, msg))
-					d.Operation <- &ReadRole{Role: msg}
-					//if port == message {
-					fmt.Println(fmt.Sprintf("message %s", msg))
-				}
-				//}
-			}).ServeHTTP(c.Response(), c.Request())
-
-			return nil
-		})
 		go func(e *echo.Echo) {
 			e.Start(fmt.Sprintf(":%d", serverPort))
-		}(e)
+		}(w.Echo)
 
 		time.Sleep(time.Second * 10)
 		ws, err := initialization.NewWebsocket(clientPort)
@@ -289,4 +293,10 @@ func ManagerOfMessages(ctx context.Context, d *dispatcher.Dispatcher) {
 			}
 		}
 	}(ctx)
+}
+
+func OB(dis dispatcher.Dispatcher) func(msg string) {
+	return func(msg string) {
+		dis.Operation <- &ReadRole{Role: msg}
+	}
 }

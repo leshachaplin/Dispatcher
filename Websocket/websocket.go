@@ -4,21 +4,20 @@ import (
 	"context"
 	"fmt"
 	"github.com/labstack/echo"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
 	"strconv"
 )
 
 type Websocket struct {
-	e        *echo.Echo
+	Echo     *echo.Echo
 	WriteUrl string
-	OnMsg    func(msg string, chanel chan interface{}) error
+	OnMsg    func(msg string)
 	Port     int
 }
 
-func New(onMessage func(msg string, chanel chan interface{}) error, ctx context.Context, port int) *Websocket {
+func New(onMessage func(msg string), ctx context.Context, port int) *Websocket {
 	w := &Websocket{
-		e:        echo.New(),
+		Echo:     echo.New(),
 		WriteUrl: "/role",
 		OnMsg:    onMessage,
 		Port:     port,
@@ -47,10 +46,7 @@ func (w *Websocket) RoleWorker(ctx context.Context, c echo.Context, port int) er
 				fmt.Println(fmt.Sprintf("Error %s", err))
 			}
 
-			error := w.OnMsg
-			if error != nil {
-				log.Errorf("message not send to chanel", err)
-			}
+			w.OnMsg(msg)
 
 			fmt.Println(fmt.Sprintf("i'am port %d read message %s", port, msg))
 			message, err := strconv.Atoi(msg)
