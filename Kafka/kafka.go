@@ -3,7 +3,6 @@ package Kafka
 import (
 	"context"
 	"fmt"
-	"github.com/leshachaplin/Dispatcher/internal/dispatcher"
 	"github.com/segmentio/kafka-go"
 	"time"
 )
@@ -13,9 +12,15 @@ type Kafka struct {
 	reader     *kafka.Reader
 }
 
+func(k *Kafka) Close() error {
+	err := k.connection.Close()
+	err = k.reader.Close()
+	return err
+}
+
 func New(topic string, port int, group string) (*Kafka, error) {
 
-	senderMsg, err := kafka.DialLeader(context.Background(), "tcp", fmt.Sprintf("localhost:%d", 9092), topic, 0)
+	senderMsg, err := kafka.DialLeader(context.Background(), "tcp", fmt.Sprintf("localhost:%d", port), topic, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -33,17 +38,17 @@ func New(topic string, port int, group string) (*Kafka, error) {
 }
 
 func (k *Kafka) WriteMessage(msg []byte) error {
-	//lo
+	//log
 	_, err := k.connection.WriteMessages(kafka.Message{
 		Value: msg,
 	})
 	return err
 }
 
-func (k *Kafka) ReadMessage(done context.Context, d *dispatcher.Dispatcher) ([]byte, error) {
+func (k *Kafka) ReadMessage() ([]byte, error) {
 	//log
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*2)
 	m, err := k.reader.ReadMessage(ctx)
 	return m.Value, err
 }

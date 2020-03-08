@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/leshachaplin/Dispatcher/internal/cmd"
+	"github.com/leshachaplin/Dispatcher/cmd"
 	log "github.com/sirupsen/logrus"
 )
 

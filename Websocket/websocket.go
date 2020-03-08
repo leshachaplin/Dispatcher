@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/labstack/echo"
 	"golang.org/x/net/websocket"
-	"strconv"
 )
 
 type Websocket struct {
@@ -15,7 +14,8 @@ type Websocket struct {
 	Port     int
 }
 
-func New(onMessage func(msg string), ctx context.Context, port int) *Websocket {
+func New(onMessage func(msg string), ctx context.Context, port int) (*Websocket, error) {
+
 	w := &Websocket{
 		Echo:     echo.New(),
 		WriteUrl: "/role",
@@ -23,10 +23,20 @@ func New(onMessage func(msg string), ctx context.Context, port int) *Websocket {
 		Port:     port,
 	}
 
-	w.e.GET("/role", func(c echo.Context) error {
+	w.Echo.GET("/role", func(c echo.Context) error {
 		return w.RoleWorker(ctx, c, w.Port)
 	})
-	return w
+	return w, nil
+}
+
+func (w *Websocket) NewWebsocketConnection() (*websocket.Conn, error) {
+	origin := fmt.Sprintf("http://localhost:%d/", w.Port)
+	url := fmt.Sprintf("ws://localhost:%d/role", w.Port)
+	webSocket, err := websocket.Dial(url, "", origin)
+	if err != nil {
+		return nil, err
+	}
+	return webSocket, nil
 }
 
 func (w *Websocket) RoleWorker(ctx context.Context, c echo.Context, port int) error {
@@ -39,7 +49,7 @@ func (w *Websocket) RoleWorker(ctx context.Context, c echo.Context, port int) er
 			ws.Close()
 		}()
 		for {
-			fmt.Println(fmt.Sprintf("i'am RoleWorker port%d", port))
+			fmt.Println(fmt.Sprintf("i'am RoleWorker port %d", port))
 			msg := ""
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
@@ -47,13 +57,7 @@ func (w *Websocket) RoleWorker(ctx context.Context, c echo.Context, port int) er
 			}
 
 			w.OnMsg(msg)
-
-			fmt.Println(fmt.Sprintf("i'am port %d read message %s", port, msg))
-			message, err := strconv.Atoi(msg)
-			if port == message {
-				fmt.Println(fmt.Sprintf(" serverport %d == %d ", port, message))
-				fmt.Println("i am not watcher")
-			}
+			fmt.Println("i am not watcher")
 		}
 	}).ServeHTTP(c.Response(), c.Request())
 	return nil
