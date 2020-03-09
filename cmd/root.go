@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo"
-	"github.com/leshachaplin/Dispatcher/Kafka"
-	"github.com/leshachaplin/Dispatcher/Websocket"
-	"github.com/leshachaplin/Dispatcher/dispatcher"
+	"github.com/leshachaplin/Dispatcher/communicationUtils/Kafka"
+	"github.com/leshachaplin/Dispatcher/communicationUtils/dispatcher"
+	"github.com/leshachaplin/Dispatcher/communicationUtils/operations"
+	"github.com/leshachaplin/Dispatcher/communicationUtils/websocket"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -23,25 +25,6 @@ var (
 	mu         sync.Mutex
 )
 
-type ReadRole struct {
-	Role string
-}
-
-type WriteRole struct {
-}
-
-type ReadOperationMessage struct {
-}
-
-type WriteOperationMessage struct {
-}
-
-type CancelWrite struct {
-}
-
-type CancelRead struct {
-}
-
 type Message struct {
 	Time string `json:"time"`
 }
@@ -51,22 +34,24 @@ var rootCmd = &cobra.Command{
 	Short: "",
 	Long:  `.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(isWatcher)
+		log.Info(isWatcher)
 		s := make(chan os.Signal)
 		signal.Notify(s, os.Interrupt)
 		done, cnsl := context.WithCancel(context.Background())
+		e := echo.New()
+
 		d := &dispatcher.Dispatcher{
-			Operation: make(chan dispatcher.Operation, 3),
+			Operation: make(chan dispatcher.Operation),
 		}
 
-		w, err := Websocket.New(OB(d), done, serverPort)
+		w, err := websocket.New(OnMessage(d), done, serverPort, e)
 		if err != nil {
 			log.Errorf("websocket not dial", err)
 		}
 
 		go func(e *echo.Echo) {
 			e.Start(fmt.Sprintf(":%d", serverPort))
-		}(w.Echo)
+		}(e)
 
 		time.Sleep(time.Second * 10)
 		ws, err := w.NewWebsocketConnection()
@@ -75,35 +60,35 @@ var rootCmd = &cobra.Command{
 		}
 		defer ws.Close()
 
-		k, err := Kafka.New("time11", 9092, strconv.FormatBool(isWatcher))
+		k, err := Kafka.New("time115", 9092, strconv.FormatBool(isWatcher))
 		defer k.Close()
 
 		d.OnOperation = func(operation dispatcher.Operation) {
 			switch operation.(type) {
-			case ReadRole:
+			case operations.ReadRole:
 				{
-					fmt.Println("READ ROLE")
+					log.Info("READ ROLE")
 					go func() {
-						fmt.Println("read role work")
-						role := operation.(ReadRole)
+						log.Info("read role work")
+						role := operation.(operations.ReadRole)
 						if role.Role == "read" {
-							fmt.Println("send read operation")
-							d.Operation <- ReadOperationMessage{}
+							log.Info("send read operation")
+							d.Operation <- operations.ReadOperationMessage{}
 							if d.CancelWrite != nil {
-								d.CancelWrite <- CancelWrite{}
-								fmt.Println("send cancel write")
+								d.CancelWrite <- operations.CancelWrite{}
+								log.Info("send cancel write")
 							} else {
 								d.CancelWrite = make(chan dispatcher.Operation)
 								//d.CancelWrite <- CancelWrite{}
 								//fmt.Println("SEND CANCEL WRITE")
 							}
 						} else {
-							fmt.Println("send write operation")
-							d.Operation <- WriteOperationMessage{}
+							log.Info("send write operation")
+							d.Operation <- operations.WriteOperationMessage{}
 
 							if d.CancelRead != nil {
-								d.CancelRead <- CancelRead{}
-								fmt.Println("send cancel read")
+								d.CancelRead <- operations.CancelRead{}
+								log.Info("send cancel read")
 							} else {
 								d.CancelRead = make(chan dispatcher.Operation)
 								//d.CancelRead <- CancelRead{}
@@ -112,11 +97,11 @@ var rootCmd = &cobra.Command{
 						}
 					}()
 				}
-			case WriteRole:
+			case operations.WriteRole:
 				{
-					fmt.Println("WRITE ROLE")
+					log.Info("WRITE ROLE")
 					go func() {
-						fmt.Println(fmt.Sprintf("i'am watcher %v change role %d", isWatcher, clientPort))
+						log.Info(fmt.Sprintf("i'am watcher %v change role %d", isWatcher, clientPort))
 						mes := "read"
 						if isWatcher {
 							mes = "write"
@@ -128,44 +113,44 @@ var rootCmd = &cobra.Command{
 							log.Errorf("message not send", err)
 						}
 
-						if !isWatcher {//????????????????????????????????????????????????????????????????
+						if !isWatcher { //????????????????????????????????????????????????????????????????
 							if d.CancelRead != nil {
-								d.CancelRead <- CancelRead{}
-								fmt.Println("send cancel READ")
+								d.CancelRead <- operations.CancelRead{}
+								log.Info("send cancel READ")
 							} else {
 								d.CancelRead = make(chan dispatcher.Operation)
-								d.CancelRead <- CancelRead{}
-								fmt.Println("CANCEL READ")
+								d.CancelRead <- operations.CancelRead{}
+								log.Info("CANCEL READ")
 							}
 
-							d.Operation <- WriteOperationMessage{}
-							fmt.Println("send WRITE operation")
+							d.Operation <- operations.WriteOperationMessage{}
+							log.Info("send WRITE operation")
 						} else {
 							if d.CancelWrite != nil {
-								d.CancelWrite <- CancelWrite{}
-								fmt.Println("send cancel WRITE")
+								d.CancelWrite <- operations.CancelWrite{}
+								log.Info("send cancel WRITE")
 							} else {
 								d.CancelWrite = make(chan dispatcher.Operation)
-								d.CancelWrite <- CancelWrite{}
-								fmt.Println("CANCEL WRITE")
+								d.CancelWrite <- operations.CancelWrite{}
+								log.Info("CANCEL WRITE")
 							}
 
-							d.Operation <- ReadOperationMessage{}
-							fmt.Println("send READ operation")
+							d.Operation <- operations.ReadOperationMessage{}
+							log.Info("send READ operation")
 
 						}
 					}()
 
 				}
-			case ReadOperationMessage:
+			case operations.ReadOperationMessage:
 				{
-					fmt.Println("read Message")
+					log.Info("read Message")
 					go func() {
 						for {
 							select {
 							case <-d.CancelRead:
 								{
-									fmt.Println("cancel read")
+									log.Info("cancel read")
 									return
 								}
 							default:
@@ -175,38 +160,39 @@ var rootCmd = &cobra.Command{
 										log.Errorf("message not read", err)
 									}
 									fmt.Println(string(m))
+
 									time.Sleep(time.Second)
 								}
 							}
 						}
 					}()
 				}
-			case WriteOperationMessage:
+			case operations.WriteOperationMessage:
 				{
-					fmt.Println("write Message")
+					log.Info("write Message")
 					go func() {
 						for {
 							select {
 							case <-d.CancelWrite:
 								{
-									fmt.Println("Cancel write")
+									log.Info("Cancel write")
 									return
 								}
 							default:
 								{
 
-									//msg, err := json.Marshal(map[string]string{
-									//	"time": time.Now().String(),
-									//})
+									msg, err := json.Marshal(map[string]string{
+										"time": time.Now().String(),
+									})
 									if err != nil {
 										log.Errorf("message not Send", err)
 									}
-									err = k.WriteMessage([]byte(time.Now().String()))
+									err = k.WriteMessage(msg)
 									if err != nil {
 										log.Errorf("message not Send", err)
 									}
 									fmt.Println("SEND MESSAGE")
-									time.Sleep(time.Second * 3)
+									time.Sleep(time.Second)
 								}
 							}
 						}
@@ -220,12 +206,10 @@ var rootCmd = &cobra.Command{
 		ManagerOfMessages(done, d)
 
 		if isWatcher {
-			d.Operation <- ReadOperationMessage{}
+			d.Operation <- operations.ReadOperationMessage{}
 		} else {
-			d.Operation <- WriteOperationMessage{}
+			d.Operation <- operations.WriteOperationMessage{}
 		}
-
-
 
 		<-s
 		close(s)
@@ -251,8 +235,8 @@ func ManagerOfMessages(ctx context.Context, d *dispatcher.Dispatcher) {
 			select {
 			case <-roleTicker.C:
 				{
-					fmt.Println("tick to change role")
-					d.Operation <- WriteRole{}
+					log.Info("tick to change role")
+					d.Operation <- operations.WriteRole{}
 				}
 			case <-ctx.Done():
 				{
@@ -263,8 +247,8 @@ func ManagerOfMessages(ctx context.Context, d *dispatcher.Dispatcher) {
 	}(ctx)
 }
 
-func OB(dis *dispatcher.Dispatcher) func(msg string) {
+func OnMessage(dis *dispatcher.Dispatcher) func(msg string) {
 	return func(msg string) {
-		dis.Operation <- &ReadRole{Role: msg}
+		dis.Operation <- &operations.ReadRole{Role: msg}
 	}
 }
