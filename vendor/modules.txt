@@ -9,7 +9,7 @@ github.com/labstack/echo
 # github.com/labstack/gommon v0.3.0
 github.com/labstack/gommon/color
 github.com/labstack/gommon/log
-# github.com/leshachaplin/communicationUtils v0.0.0-20200309112227-659821d86b3c
+# github.com/leshachaplin/communicationUtils v0.0.0-20200309115528-8f69e3f3f466
 github.com/leshachaplin/communicationUtils/kafka
 github.com/leshachaplin/communicationUtils/websocket
 # github.com/mattn/go-colorable v0.1.2
