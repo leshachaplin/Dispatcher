@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo"
-	"github.com/leshachaplin/Dispatcher/communicationUtils/Kafka"
-	"github.com/leshachaplin/Dispatcher/communicationUtils/dispatcher"
-	"github.com/leshachaplin/Dispatcher/communicationUtils/operations"
-	"github.com/leshachaplin/Dispatcher/communicationUtils/websocket"
+	"github.com/leshachaplin/Dispatcher/config"
+	"github.com/leshachaplin/Dispatcher/dispatcher"
+	"github.com/leshachaplin/Dispatcher/operations"
+	Kafka "github.com/leshachaplin/communicationUtils/kafka"
+	Websocket "github.com/leshachaplin/communicationUtils/websocket"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -22,7 +22,6 @@ var (
 	isWatcher  bool
 	serverPort int
 	clientPort int
-	mu         sync.Mutex
 )
 
 type Message struct {
@@ -39,14 +38,15 @@ var rootCmd = &cobra.Command{
 		signal.Notify(s, os.Interrupt)
 		done, cnsl := context.WithCancel(context.Background())
 		e := echo.New()
+		cfg := config.NewConfig()
 
 		d := &dispatcher.Dispatcher{
 			Operation: make(chan dispatcher.Operation),
 		}
 
-		w, err := websocket.New(OnMessage(d), done, serverPort, e)
+		_, err := Websocket.NewServer(OnMessage(d), done, e)
 		if err != nil {
-			log.Errorf("websocket not dial", err)
+			log.Errorf("websocketUtils not dial", err)
 		}
 
 		go func(e *echo.Echo) {
@@ -54,13 +54,13 @@ var rootCmd = &cobra.Command{
 		}(e)
 
 		time.Sleep(time.Second * 10)
-		ws, err := w.NewWebsocketConnection()
+		ws, err := Websocket.NewClient(cfg.Origin, cfg.Url)
 		if err != nil {
-			log.Errorf("websocket not dial", err)
+			log.Errorf("websocketUtils not dial", err)
 		}
 		defer ws.Close()
 
-		k, err := Kafka.New("time115", 9092, strconv.FormatBool(isWatcher))
+		k, err := Kafka.New("time1151", cfg.KafkaUrl, strconv.FormatBool(isWatcher))
 		defer k.Close()
 
 		d.OnOperation = func(operation dispatcher.Operation) {
@@ -109,7 +109,7 @@ var rootCmd = &cobra.Command{
 						} else {
 							isWatcher = true
 						}
-						if _, err := ws.Write([]byte(mes)); err != nil {
+						if err := ws.Write(mes); err != nil {
 							log.Errorf("message not send", err)
 						}
 

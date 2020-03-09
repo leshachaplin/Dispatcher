@@ -1,3 +1,5 @@
+# github.com/caarlos0/env/v6 v6.2.1
+github.com/caarlos0/env/v6
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
@@ -7,6 +9,9 @@ github.com/labstack/echo
 # github.com/labstack/gommon v0.3.0
 github.com/labstack/gommon/color
 github.com/labstack/gommon/log
+# github.com/leshachaplin/communicationUtils v0.0.0-20200309112227-659821d86b3c
+github.com/leshachaplin/communicationUtils/kafka
+github.com/leshachaplin/communicationUtils/websocket
 # github.com/mattn/go-colorable v0.1.2
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.9
