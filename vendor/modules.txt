@@ -1,7 +1,5 @@
 # github.com/caarlos0/env/v6 v6.2.1
 github.com/caarlos0/env/v6
-# github.com/inconshreveable/mousetrap v1.0.0
-github.com/inconshreveable/mousetrap
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/labstack/echo v3.3.10+incompatible
@@ -9,7 +7,7 @@ github.com/labstack/echo
 # github.com/labstack/gommon v0.3.0
 github.com/labstack/gommon/color
 github.com/labstack/gommon/log
-# github.com/leshachaplin/communicationUtils v0.0.0-20200309115528-8f69e3f3f466
+# github.com/leshachaplin/communicationUtils v0.0.0-20200309144847-856481cf6e0e
 github.com/leshachaplin/communicationUtils/kafka
 github.com/leshachaplin/communicationUtils/websocket
 # github.com/mattn/go-colorable v0.1.2
@@ -21,10 +19,6 @@ github.com/segmentio/kafka-go
 github.com/segmentio/kafka-go/sasl
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
-# github.com/spf13/cobra v0.0.6
-github.com/spf13/cobra
-# github.com/spf13/pflag v1.0.3
-github.com/spf13/pflag
 # github.com/valyala/bytebufferpool v1.0.0
 github.com/valyala/bytebufferpool
 # github.com/valyala/fasttemplate v1.0.1

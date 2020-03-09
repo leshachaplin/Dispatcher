@@ -37,7 +37,9 @@ func main() {
 		Operation: make(chan dispatcher.Operation),
 	}
 
-	_, err := Websocket.NewServer(OnMessage(d), done, e)
+	_, err := Websocket.NewServer(func(msg string) {
+		d.Operation <- operations.ReadRole{Role: msg}
+	}, done, e)
 	if err != nil {
 		log.Errorf("websocketUtils not dial", err)
 	}
@@ -46,7 +48,7 @@ func main() {
 		e.Start(fmt.Sprintf(":%d", cfg.ServerPort))
 	}(e)
 
-	k, err := Kafka.New("time1151", cfg.KafkaUrl, strconv.FormatBool(isWatcher))
+	k, err := Kafka.New("time1152", cfg.KafkaUrl, strconv.FormatBool(isWatcher))
 	if err != nil {
 		log.Errorf("kafka client not connected ", err)
 	}
@@ -68,6 +70,7 @@ func main() {
 							log.Info("send cancel write")
 						} else {
 							d.CancelWrite = make(chan dispatcher.Operation)
+							d.CancelWrite <- operations.CancelWrite{}
 						}
 					} else {
 						log.Info("send write operation")
@@ -78,6 +81,7 @@ func main() {
 							log.Info("send cancel read")
 						} else {
 							d.CancelRead = make(chan dispatcher.Operation)
+							d.CancelRead <- operations.CancelRead{}
 						}
 					}
 				}()
@@ -98,6 +102,7 @@ func main() {
 								m, err := k.ReadMessage()
 								if err != nil {
 									log.Errorf("message not read", err)
+									continue
 								}
 								fmt.Println(string(m))
 
@@ -125,10 +130,12 @@ func main() {
 								})
 								if err != nil {
 									log.Errorf("message not Send", err)
+									continue
 								}
 								err = k.WriteMessage(msg)
 								if err != nil {
 									log.Errorf("message not Send", err)
+									continue
 								}
 								fmt.Println("SEND MESSAGE")
 								time.Sleep(time.Second)
@@ -155,6 +162,6 @@ func main() {
 
 func OnMessage(dis *dispatcher.Dispatcher) func(msg string) {
 	return func(msg string) {
-		dis.Operation <- &operations.ReadRole{Role: msg}
+		dis.Operation <- operations.ReadRole{Role: msg}
 	}
 }
